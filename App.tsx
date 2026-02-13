@@ -1,45 +1,57 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect, useState } from 'react';
+import { StatusBar, useColorScheme } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
+import NavigationStack, { RNStackParamList } from './src/navigation/NavigationStack';
+import bridgeUtils from './src/bridge/bridgeUtils';
+import './src/i18n/config';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+interface InitialProps {
+  userId?: string;
+  authToken?: string;
+  userName?: string;
+}
 
-function App() {
+function App(initialProps?: InitialProps) {
   const isDarkMode = useColorScheme() === 'dark';
+  const [initialParams, setInitialParams] = useState<
+    RNStackParamList['DashboardScreen'] | undefined
+  >();
+
+  useEffect(() => {
+    if (initialProps?.userId && initialProps?.authToken) {
+      setInitialParams({
+        userId: initialProps.userId,
+        authToken: initialProps.authToken,
+        userName: initialProps.userName,
+      });
+    }
+
+    const unsubscribeNativeEvent = bridgeUtils.onNativeEvent(
+      'user_authenticated',
+      (data) => {
+        setInitialParams({
+          userId: data.userId,
+          authToken: data.authToken,
+          userName: data.userName,
+        });
+      }
+    );
+
+    return () => {
+      unsubscribeNativeEvent();
+    };
+  }, [initialProps]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
+    <Provider store={store}>
+      <SafeAreaProvider>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <NavigationStack initialParams={initialParams} />
+      </SafeAreaProvider>
+    </Provider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
